@@ -1,0 +1,4 @@
+[core]
+    remote = labstore
+['remote "labstore"']
+    url = s3://lab21-046989631558-ap-southeast-2-an/dvc
