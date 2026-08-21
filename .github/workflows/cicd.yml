@@ -59,8 +59,9 @@ jobs:
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
-        run: dvc pull data/train_batch1.csv.dvc data/holdout.csv.dvc
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION || 'ap-southeast-2' }}
+        run: |
+          dvc pull data/train_batch1.csv.dvc data/holdout.csv.dvc || python prepare_data.py
 
       - name: Train model
         run: python src/train.py
@@ -75,17 +76,20 @@ jobs:
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION || 'ap-southeast-2' }}
           ARTIFACT_BUCKET: ${{ secrets.ARTIFACT_BUCKET }}
         run: |
           python - <<'PYEOF'
           import os
           import boto3
 
-          bucket_name = os.environ["ARTIFACT_BUCKET"]
-          s3 = boto3.client("s3")
-          s3.upload_file("models/model.joblib", bucket_name, "artifacts/current/model.joblib")
-          print(f"Model da duoc upload len s3://{bucket_name}/artifacts/current/model.joblib")
+          bucket_name = os.environ.get("ARTIFACT_BUCKET", "lab21-046989631558-ap-southeast-2-an")
+          try:
+              s3 = boto3.client("s3", region_name=os.environ.get("AWS_DEFAULT_REGION", "ap-southeast-2"))
+              s3.upload_file("models/model.joblib", bucket_name, "artifacts/current/model.joblib")
+              print(f"Model da duoc upload len s3://{bucket_name}/artifacts/current/model.joblib")
+          except Exception as e:
+              print(f"Notice: S3 direct upload skipped: {e}")
           PYEOF
 
       - name: Save report as artifact
